@@ -1,0 +1,6 @@
+{
+  "name": "DevConnect",
+  "description": "Developer Collaboration Platform for sharing project ideas, connecting with peers, and discussing trends.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
