@@ -255,7 +255,7 @@ export default function CompleteProfilePage() {
             <label className="block text-[10.5px] font-mono uppercase tracking-widest text-slate-400 mb-2.5">4. Developer Web Endpoint Links</label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-[10px] text-slate-500 mb-1">GitHub URL</label>
+                <label className="block text-[10px] text-slate-500 mb-1">GITHUB URL</label>
                 <div className="relative">
                   <Github className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-650" />
                   <input 
@@ -269,7 +269,7 @@ export default function CompleteProfilePage() {
               </div>
 
               <div>
-                <label className="block text-[10px] text-slate-500 mb-1">LinkedIn URL</label>
+                <label className="block text-[10px] text-slate-500 mb-1">LINKEDIN URL</label>
                 <div className="relative">
                   <Linkedin className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-650" />
                   <input 
