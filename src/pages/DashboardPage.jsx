@@ -23,9 +23,7 @@ import {
   Globe,
   Settings,
   FolderPlus,
-  ChevronDown,
-  Github,
-  Linkedin
+  ChevronDown
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -50,13 +48,10 @@ export default function DashboardPage() {
   } = useDevConnect();
 
   // Redirect if session state is missing
-  React.useEffect(() => {
-    if (!currentUser) {
-      navigate('/login');
-    }
-  }, [currentUser, navigate]);
-
   if (!currentUser) {
+    React.useEffect(() => {
+      navigate('/login');
+    }, [navigate]);
     return null;
   }
 

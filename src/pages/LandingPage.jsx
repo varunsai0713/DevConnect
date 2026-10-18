@@ -91,16 +91,16 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-4">
           <Link 
             to="/login"
-            className="text-sm font-bold text-slate-200 hover:text-indigo-400 transition px-3 py-2 cursor-pointer"
+            className="text-xs font-semibold text-slate-350 hover:text-white transition px-3 py-2 cursor-pointer"
           >
             Sign In
           </Link>
           <button
             onClick={() => navigate('/signup')}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm px-5 py-2.5 rounded-lg border border-indigo-400/30 transition shadow-md shadow-indigo-600/10 cursor-pointer"
+            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2 rounded border border-indigo-400/30 transition shadow-md shadow-indigo-600/10 cursor-pointer"
           >
             Get Started
           </button>

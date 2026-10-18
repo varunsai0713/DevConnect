@@ -20,12 +20,6 @@ export default function CompleteProfilePage() {
   const navigate = useNavigate();
   const { currentUser, updateProfileSetup } = useDevConnect();
 
-  React.useEffect(() => {
-    if (!currentUser) {
-      navigate('/login');
-    }
-  }, [currentUser, navigate]);
-
   // Avatar Presets
   const avatarPresets = [
     'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150', // Varun
@@ -87,10 +81,6 @@ export default function CompleteProfilePage() {
       navigate('/dashboard');
     }, 1200);
   };
-
-  if (!currentUser) {
-    return null;
-  }
 
   return (
     <div id="setup-root" className="min-h-screen bg-[#020617] text-slate-150 font-sans py-12 px-6">
@@ -255,7 +245,7 @@ export default function CompleteProfilePage() {
             <label className="block text-[10.5px] font-mono uppercase tracking-widest text-slate-400 mb-2.5">4. Developer Web Endpoint Links</label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-[10px] text-slate-500 mb-1">GITHUB URL</label>
+                <label className="block text-[10px] text-slate-500 mb-1">GitHub URL</label>
                 <div className="relative">
                   <Github className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-650" />
                   <input 
@@ -269,7 +259,7 @@ export default function CompleteProfilePage() {
               </div>
 
               <div>
-                <label className="block text-[10px] text-slate-500 mb-1">LINKEDIN URL</label>
+                <label className="block text-[10px] text-slate-500 mb-1">LinkedIn URL</label>
                 <div className="relative">
                   <Linkedin className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-650" />
                   <input 
