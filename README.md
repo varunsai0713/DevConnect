@@ -20,37 +20,34 @@ DevConnect is a developer community app for discovering people and projects, sha
 | Styling and animation | Tailwind CSS, Motion |
 | Icons | Lucide React |
 | Backend | Java 17, Spring Boot, Spring Security, Spring Data JPA |
-| Database | H2 by default; PostgreSQL is also included as a runtime dependency |
+| Database | PostgreSQL 15, managed locally with Docker Compose |
 
 ## Requirements
 
 - Node.js and npm
 - Java 17 or newer
+- Docker Desktop (running)
 
 ## Run locally
 
-Open two terminals at the repository root.
-
-### 1. Start the backend
-
-In the first terminal, run:
+Copy `.env.example` to `.env` before the first run, and replace its JWT signing key with a private random value. The example database credentials are for local development only; use strong secrets for deployment. Install frontend dependencies once, then start the app from the repository root:
 
 ```powershell
-.\backend\mvnw.cmd -f backend\pom.xml spring-boot:run
-```
-
-The API starts at `http://localhost:8080`. By default, it uses an in-memory H2 database.
-
-### 2. Start the frontend
-
-In the second terminal, run:
-
-```powershell
-npm install
+npm --prefix frontend install
 npm run dev
 ```
 
-Open the local URL printed by Vite (the project is configured to use port `3000`).
+The dev command starts PostgreSQL with Docker Compose, then starts the frontend and Spring Boot API. Open the Vite URL printed in the terminal (normally `http://localhost:3000`); the API is at `http://localhost:8080`. Press `Ctrl+C` to stop the frontend and API. PostgreSQL data persists in the `pgdata` Docker volume.
+
+User registration, sign-in, and profile setup are stored in PostgreSQL. Passwords are BCrypt-hashed. The project/discussion demo content is still stored in browser `localStorage`.
+
+To verify the saved user records, run this from the repository root while the app is running:
+
+```powershell
+docker compose exec db psql -U postgres -d devconnect -c "SELECT id, username, email FROM users;"
+```
+
+If you change `DB_USERNAME` in `.env`, use that value instead of `postgres` in the command.
 
 ## API overview
 
@@ -60,8 +57,9 @@ The backend API is served under `/api`:
 | --- | --- | --- |
 | `POST` | `/api/auth/signup` | Register an account |
 | `POST` | `/api/auth/signin` | Sign in and receive a JWT |
-| `GET`, `POST` | `/api/users` | List and create users |
-| `GET`, `PUT` | `/api/users/{id}` | Read and update a user |
+| `GET` | `/api/users` | List developer profiles |
+| `GET`, `PUT` | `/api/users/me` | Read or update the signed-in user's profile |
+| `GET`, `PUT` | `/api/users/{id}` | Read a profile or update your own profile |
 | `GET`, `POST` | `/api/projects` | List and create projects |
 | `GET`, `PUT` | `/api/projects/{id}` | Read a project or like it |
 | `GET`, `POST` | `/api/discussions` | List and create discussions |
@@ -73,7 +71,7 @@ The backend API is served under `/api`:
 Build the frontend:
 
 ```powershell
-npm run build
+npm --prefix frontend run build
 ```
 
 Package the backend:
@@ -82,12 +80,35 @@ Package the backend:
 .\backend\mvnw.cmd -f backend\pom.xml package
 ```
 
+To build and run the backend Docker image from the repository root:
+
+```powershell
+.\backend\mvnw.cmd -f backend\pom.xml package
+docker build -f backend\Dockerfile -t devconnect-backend .
+docker run --rm -p 8080:8080 devconnect-backend
+```
+
 ## Repository layout
 
 ```text
-src/       React frontend
-backend/   Spring Boot API
+.
+├── frontend/                 React + Vite application
+│   ├── src/
+│   │   ├── App.jsx           Routes
+│   │   ├── context/          Shared frontend state
+│   │   └── pages/            Landing, sign-in, sign-up, dashboard, etc.
+│   ├── index.html            Vite HTML entry
+│   ├── package.json          Frontend dependencies and scripts
+│   └── vite.config.js        Vite configuration
+├── backend/                  Spring Boot API
+│   ├── src/main/java/        Backend Java source
+│   ├── pom.xml               Maven configuration
+│   └── Dockerfile            Backend container image
+├── docker-compose.yml        Local PostgreSQL service
+└── README.md
 ```
+
+Frontend source files live in `frontend/src/` (for example, `frontend/src/pages/SignInPage.jsx`).
 
 ## License
 

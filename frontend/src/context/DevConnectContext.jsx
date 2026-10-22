@@ -1,6 +1,25 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { apiRequest } from '../api/client';
 
 const DevConnectContext = createContext(null);
+
+const mapApiUser = (user) => ({
+  id: String(user.id),
+  username: user.username,
+  fullName: user.fullName,
+  email: user.email,
+  role: user.role === 'ROLE_USER' ? 'Full Stack Developer' : user.role,
+  experience: user.experience || '',
+  location: user.location || '',
+  avatar: user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
+  bio: user.bio || '',
+  skills: user.skills || [],
+  socials: {
+    github: user.githubUrl || '',
+    linkedin: user.linkedinUrl || '',
+    portfolio: user.portfolioUrl || '',
+  },
+});
 
 export const useDevConnect = () => {
   const context = useContext(DevConnectContext);
@@ -147,7 +166,7 @@ export const DevConnectProvider = ({ children }) => {
 
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem('dc_web_current_user');
-    return saved ? JSON.parse(saved) : null;
+    return saved && localStorage.getItem('dc_auth_token') ? JSON.parse(saved) : null;
   });
 
   const [collabRequests, setCollabRequests] = useState(() => {
@@ -195,65 +214,55 @@ export const DevConnectProvider = ({ children }) => {
   }, [collabRequests]);
 
   // Actions
-  const registerUser = (username, fullName, email, password) => {
-    const newUser = {
-      id: `usr-${Date.now()}`,
-      username: username.toLowerCase().trim(),
-      fullName,
-      email: email.toLowerCase().trim(),
-      role: 'Full Stack Engineer',
-      experience: '2 years',
-      location: 'Remote',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
-      bio: '',
-      skills: [],
-      socials: { github: '', linkedin: '', portfolio: '' }
-    };
-
-    setUsers(prev => [...prev, newUser]);
+  const registerUser = async (username, fullName, email, password) => {
+    const response = await apiRequest('/auth/signup', {
+      method: 'POST',
+      body: { username, fullName, email, password },
+    });
+    localStorage.setItem('dc_auth_token', response.token);
+    const newUser = mapApiUser(response);
+    setUsers(prev => [...prev.filter(user => user.username !== newUser.username), newUser]);
     setCurrentUser(newUser);
     return newUser;
   };
 
-  const loginUser = (email, password) => {
-    const trimmedEmail = email.toLowerCase().trim();
-    // Locate existing user
-    let found = users.find(u => u.email === trimmedEmail);
-    if (!found) {
-      // Seed on-the-fly to guarantee success as requested by "No Mock Data" or graceful flow
-      found = {
-        id: `usr-${Date.now()}`,
-        username: trimmedEmail.split('@')[0],
-        fullName: 'Varun Sai',
-        email: trimmedEmail,
-        role: 'Lead Full Stack Engineer (React / Spring Boot)',
-        experience: '5 years',
-        location: 'Bangalore, India',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
-        bio: 'Designing resilient systems with Spring Cloud API gateways and high-fidelity React interfaces. Passionate about JPA performance optimization.',
-        skills: ['Java', 'Spring Boot', 'React', 'PostgreSQL', 'AWS'],
-        socials: { github: 'https://github.com/varunsai', linkedin: 'https://linkedin.com', portfolio: '' }
-      };
-      setUsers(prev => [...prev, found]);
+  const loginUser = async (username, password) => {
+    const response = await apiRequest('/auth/signin', {
+      method: 'POST',
+      body: { username: username.trim(), password },
+    });
+    localStorage.setItem('dc_auth_token', response.token);
+
+    try {
+      const profile = await apiRequest('/users/me');
+      const user = mapApiUser(profile);
+      setUsers(prev => [...prev.filter(existing => existing.username !== user.username), user]);
+      setCurrentUser(user);
+      return user;
+    } catch (error) {
+      localStorage.removeItem('dc_auth_token');
+      throw error;
     }
-    setCurrentUser(found);
-    return found;
   };
 
-  const updateProfileSetup = (bio, role, experience, location, skills, socials, avatar) => {
+  const updateProfileSetup = async (bio, role, experience, location, skills, socials, avatar) => {
     if (!currentUser) return;
-    
-    const updatedUser = {
-      ...currentUser,
-      bio,
-      role,
-      experience,
-      location,
-      skills,
-      socials,
-      avatar: avatar || currentUser.avatar
-    };
 
+    const profile = await apiRequest('/users/me', {
+      method: 'PUT',
+      body: {
+        bio,
+        role,
+        experience,
+        location,
+        skills,
+        githubUrl: socials.github,
+        linkedinUrl: socials.linkedin,
+        portfolioUrl: socials.portfolio,
+        avatar: avatar || currentUser.avatar,
+      },
+    });
+    const updatedUser = mapApiUser(profile);
     setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
     setCurrentUser(updatedUser);
   };
@@ -263,6 +272,7 @@ export const DevConnectProvider = ({ children }) => {
   };
 
   const logoutUser = () => {
+    localStorage.removeItem('dc_auth_token');
     setCurrentUser(null);
   };
 

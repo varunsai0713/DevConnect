@@ -92,17 +92,17 @@ export default function LandingPage() {
         </div>
 
         <div className="flex items-center gap-4">
-          <Link 
+          <Link
             to="/login"
-            className="text-xs font-semibold text-slate-350 hover:text-white transition px-3 py-2 cursor-pointer"
+            className="bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs px-4 py-2 rounded border border-teal-400/30 transition shadow-md shadow-teal-600/10 cursor-pointer"
           >
-            Sign In
+            Log In
           </Link>
           <button
             onClick={() => navigate('/signup')}
             className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2 rounded border border-indigo-400/30 transition shadow-md shadow-indigo-600/10 cursor-pointer"
           >
-            Get Started
+            Sign Up
           </button>
         </div>
       </nav>
@@ -123,21 +123,21 @@ export default function LandingPage() {
           Skip standard empty noise. DevConnect links verified full-stack teams, database strategists, and Operations Leads on realistic, resilient project boards. Optimize high performance pipelines starting today.
         </p>
 
-        {/* Call to Actions */}
+        {/* Explore links */}
         <div className="mt-10 flex flex-wrap justify-center gap-4">
-          <button
-            onClick={() => navigate('/signup')}
+          <a
+            href="#features-section"
             className="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm px-8 py-4 rounded-lg border border-indigo-400/40 transition-all cursor-pointer transform hover:-translate-y-0.5 shadow-xl shadow-indigo-600/15 flex items-center gap-2"
           >
-            <span>Get Started</span>
+            <span>Explore Features</span>
             <ArrowRight className="w-4 h-4 text-white" />
-          </button>
-          <button
-            onClick={() => navigate('/login')}
+          </a>
+          <a
+            href="#how-it-works"
             className="bg-slate-900 hover:bg-slate-850 text-slate-200 hover:text-white font-bold text-sm px-8 py-4 rounded-lg border border-slate-800 transition cursor-pointer"
           >
-            Sign In with Session
-          </button>
+            How It Works
+          </a>
         </div>
 
         {/* Visual Terminal Placeholder */}
@@ -217,12 +217,12 @@ export default function LandingPage() {
         <p className="text-xs text-slate-400 mt-2 max-w-xl mx-auto leading-relaxed">
           Create validation credentials, specify skills tags, and pitch real tasks directly. Connect with absolute JPA or frontend visual wizards.
         </p>
-        <button
-          onClick={() => navigate('/signup')}
-          className="mt-6 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-8 py-3 rounded-lg border border-indigo-500/40 transition-all cursor-pointer shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/30"
+        <a
+          href="#features-section"
+          className="mt-6 inline-flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-8 py-3 rounded-lg border border-indigo-500/40 transition-all cursor-pointer shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/30"
         >
-          Begin Setup Tunnel
-        </button>
+          Explore DevConnect
+        </a>
       </section>
 
       {/* Footer Area */}

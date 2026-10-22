@@ -13,7 +13,8 @@ import {
   Check, 
   RefreshCw,
   Sparkles,
-  Award
+  Award,
+  AlertTriangle
 } from 'lucide-react';
 
 export default function CompleteProfilePage() {
@@ -34,17 +35,18 @@ export default function CompleteProfilePage() {
 
   // State values holding completed credentials
   const [avatar, setAvatar] = useState(currentUser?.avatar || avatarPresets[0]);
-  const [bio, setBio] = useState(currentUser?.bio || 'Designing resilient systems with Spring Cloud API gateways and high-fidelity React interfaces. Passionate about JPA performance optimization.');
-  const [role, setRole] = useState(currentUser?.role || 'Lead Full Stack Engineer (React / Spring Boot)');
-  const [experience, setExperience] = useState('5 years');
-  const [location, setLocation] = useState('Bangalore, India');
-  const [selectedSkills, setSelectedSkills] = useState(['Java', 'Spring Boot', 'React', 'PostgreSQL']);
+  const [bio, setBio] = useState(currentUser?.bio || '');
+  const [role, setRole] = useState(currentUser?.role || 'Full Stack Developer');
+  const [experience, setExperience] = useState(currentUser?.experience || '2 years');
+  const [location, setLocation] = useState(currentUser?.location || '');
+  const [selectedSkills, setSelectedSkills] = useState(currentUser?.skills || []);
   
-  const [github, setGithub] = useState('https://github.com/varun_sai');
-  const [linkedin, setLinkedin] = useState('https://linkedin.com/in/varunsai');
-  const [portfolio, setPortfolio] = useState('https://varunsai.dev');
+  const [github, setGithub] = useState(currentUser?.socials?.github || '');
+  const [linkedin, setLinkedin] = useState(currentUser?.socials?.linkedin || '');
+  const [portfolio, setPortfolio] = useState(currentUser?.socials?.portfolio || '');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   // Toggle skills selections
   const handleToggleSkill = (skill) => {
@@ -63,12 +65,13 @@ export default function CompleteProfilePage() {
     }
   };
 
-  const handleCompleteSetupSubmit = (e) => {
+  const handleCompleteSetupSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      updateProfileSetup(
+    try {
+      await updateProfileSetup(
         bio,
         role,
         experience,
@@ -77,9 +80,11 @@ export default function CompleteProfilePage() {
         { github, linkedin, portfolio },
         avatar
       );
-      setIsSubmitting(false);
       navigate('/dashboard');
-    }, 1200);
+    } catch (requestError) {
+      setError(requestError.message);
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -104,6 +109,12 @@ export default function CompleteProfilePage() {
         </div>
 
         <form onSubmit={handleCompleteSetupSubmit} className="space-y-6">
+          {error && (
+            <div role="alert" className="flex items-start gap-2 rounded-lg border border-rose-900/50 bg-rose-950/50 p-3 text-sm text-rose-300">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
           
           {/* Avatar Picture Selections */}
           <div>

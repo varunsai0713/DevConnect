@@ -21,6 +21,8 @@ import {
   ThumbsUp,
   MapPin,
   Globe,
+  Github,
+  Linkedin,
   Settings,
   FolderPlus,
   ChevronDown
@@ -47,13 +49,9 @@ export default function DashboardPage() {
     logoutUser 
   } = useDevConnect();
 
-  // Redirect if session state is missing
-  if (!currentUser) {
-    React.useEffect(() => {
-      navigate('/login');
-    }, [navigate]);
-    return null;
-  }
+  React.useEffect(() => {
+    if (!currentUser) navigate('/login', { replace: true });
+  }, [currentUser, navigate]);
 
   // Component UI States
   const [activeTab, setActiveTab] = useState('projects'); // 'projects' | 'discussions' | 'invitations'
@@ -146,14 +144,18 @@ export default function DashboardPage() {
 
   // Connection recommendations (omit current logged in user)
   const recommendations = useMemo(() => {
+    if (!currentUser) return [];
     return users.filter(u => u.id !== currentUser.id);
   }, [users, currentUser]);
 
   const liveConnections = useMemo(() => {
+    if (!currentUser) return [];
     return users.filter(u => u.isFollowed && u.id !== currentUser.id);
   }, [users, currentUser]);
 
   const unreadCount = notifications.filter(n => n.unread).length;
+
+  if (!currentUser) return null;
 
   return (
     <div id="dashboard-root" className="min-h-screen bg-[#020617] text-slate-100 font-sans relative">

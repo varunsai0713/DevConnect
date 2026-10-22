@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -32,6 +33,11 @@ public class AuthController {
     @Autowired
     JwtUtil jwtUtil;
 
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<MessageResponse> handleAuthenticationFailure() {
+        return ResponseEntity.status(401).body(new MessageResponse("Invalid username/email or password."));
+    }
+
     @PostMapping("/signin")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
 
@@ -41,7 +47,7 @@ public class AuthController {
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = jwtUtil.generateJwtToken(authentication);
         
-        User user = userRepository.findByUsername(loginRequest.getUsername()).orElseThrow();
+        User user = userRepository.findByUsername(authentication.getName()).orElseThrow();
 
         return ResponseEntity.ok(new JwtResponse(jwt, 
                                                  user.getId(), 
@@ -74,8 +80,19 @@ public class AuthController {
                 .role("ROLE_USER")
                 .build();
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
 
-        return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(savedUser.getUsername(), signUpRequest.getPassword()));
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        String jwt = jwtUtil.generateJwtToken(authentication);
+
+        return ResponseEntity.ok(new JwtResponse(
+                jwt,
+                savedUser.getId(),
+                savedUser.getUsername(),
+                savedUser.getEmail(),
+                savedUser.getFullName(),
+                savedUser.getRole()));
     }
 }

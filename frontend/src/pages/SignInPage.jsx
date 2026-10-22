@@ -16,23 +16,20 @@ export default function SignInPage() {
   const navigate = useNavigate();
   const { loginUser } = useDevConnect();
 
-  const [email, setEmail] = useState('alex.mercer@devconnect.io');
-  const [password, setPassword] = useState('Pass123!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   // Handle Form Submission with validations
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError('Please provide a valid email address credential.');
+    if (!email.trim()) {
+      setError('Please enter your username or email address.');
       return;
     }
 
@@ -44,42 +41,19 @@ export default function SignInPage() {
 
     setIsSubmitting(true);
 
-    // Emulate TLS login validation handshake
-    setTimeout(() => {
-      try {
-        const user = loginUser(email, password);
-        setSuccess(`TLS handshake verified securely. Minted role scope [ROLE_DEVELOPER].`);
-        
-        setTimeout(() => {
-          setIsSubmitting(false);
-          // If the bio or skills are empty, redirect them to complete profile setup, otherwise dashboard
-          if (!user.skills || user.skills.length === 0) {
-            navigate('/profile-setup');
-          } else {
-            navigate('/dashboard');
-          }
-        }, 1000);
-      } catch (err) {
-        setError('Verification rejected: Database endpoint connection refused.');
-        setIsSubmitting(false);
-      }
-    }, 1200);
+    try {
+      const user = await loginUser(email, password);
+      setSuccess('Signed in successfully.');
+      setIsSubmitting(false);
+      navigate(user.skills.length === 0 ? '/profile-setup' : '/dashboard');
+    } catch (requestError) {
+      setError(requestError.message);
+      setIsSubmitting(false);
+    }
   };
 
-  // Google Emulation Authentication
   const handleGoogleSignIn = () => {
-    setError('');
-    setIsGoogleSubmitting(true);
-    
-    setTimeout(() => {
-      const user = loginUser('google.dev@devconnect.io', 'GoogleAuthBypass');
-      setSuccess('OAuth2 authentication accepted. Mounted external token context.');
-      
-      setTimeout(() => {
-        setIsGoogleSubmitting(false);
-        navigate('/profile-setup');
-      }, 1000);
-    }, 1500);
+    setError('Google sign-in is not configured yet. Please sign in with your username and password.');
   };
 
   return (
@@ -129,16 +103,17 @@ export default function SignInPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-[10px] font-mono uppercase tracking-widest text-slate-500 mb-1.5">Developer Email Address</label>
+            <label className="block text-[10px] font-mono uppercase tracking-widest text-slate-500 mb-1.5">Username or Email</label>
             <div className="relative">
               <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-600" />
               <input 
-                type="email" 
+                type="text"
+                autoComplete="username"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="e.g. alex.mercer@devconnect.io"
-                disabled={isSubmitting || isGoogleSubmitting}
+                placeholder="Enter your username or email"
+                disabled={isSubmitting}
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-10 pr-4 py-3 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-transparent transition placeholder:text-slate-700 disabled:opacity-50"
               />
             </div>
@@ -159,7 +134,7 @@ export default function SignInPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
-                disabled={isSubmitting || isGoogleSubmitting}
+                disabled={isSubmitting}
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-10 pr-4 py-3 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-transparent transition placeholder:text-slate-750 disabled:opacity-50"
               />
             </div>
@@ -168,7 +143,7 @@ export default function SignInPage() {
           {/* Sign In submit button */}
           <button
             type="submit"
-            disabled={isSubmitting || isGoogleSubmitting}
+            disabled={isSubmitting}
             className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-lg cursor-pointer transition flex items-center justify-center gap-2 text-sm shadow-md shadow-indigo-600/10 disabled:opacity-50"
           >
             {isSubmitting ? (
@@ -196,16 +171,12 @@ export default function SignInPage() {
         <button
           type="button"
           onClick={handleGoogleSignIn}
-          disabled={isSubmitting || isGoogleSubmitting}
+          disabled={isSubmitting}
           className="w-full bg-[#020617] hover:bg-slate-900 text-slate-200 hover:text-white border border-slate-800 font-bold py-3 px-4 rounded-lg cursor-pointer transition flex items-center justify-center gap-2.5 text-xs disabled:opacity-50"
         >
-          {isGoogleSubmitting ? (
-            <RefreshCw className="w-4 h-4 animate-spin text-slate-400" />
-          ) : (
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.187 4.114-3.578 0-6.49-2.912-6.49-6.49s2.912-6.49 6.49-6.49c1.678 0 3.102.61 4.182 1.628l3.102-3.102C19.23 2.13 15.93 1 12.24 1 5.48 1 0 6.48 0 13.24s5.48 12.24 12.24 12.24c6.82 0 12.76-4.91 12.76-12.24 0-.71-.08-1.53-.16-2.2H12.24z"/>
-            </svg>
-          )}
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.187 4.114-3.578 0-6.49-2.912-6.49-6.49s2.912-6.49 6.49-6.49c1.678 0 3.102.61 4.182 1.628l3.102-3.102C19.23 2.13 15.93 1 12.24 1 5.48 1 0 6.48 0 13.24s5.48 12.24 12.24 12.24c6.82 0 12.76-4.91 12.76-12.24 0-.71-.08-1.53-.16-2.2H12.24z"/>
+          </svg>
           <span>Continue with Google Single-Sign-On</span>
         </button>
 
