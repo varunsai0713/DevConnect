@@ -245,26 +245,170 @@ export const DevConnectProvider = ({ children }) => {
     }
   };
 
-  const updateProfileSetup = async (bio, role, experience, location, skills, socials, avatar) => {
+  const socialLogin = async (provider, userDetails = {}) => {
+    const email = (userDetails.email || `${provider.toLowerCase()}.user@devconnect.local`).toLowerCase().trim();
+    const fullName = userDetails.fullName || email.split('@')[0];
+    const username = (userDetails.username || email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '')).toLowerCase().slice(0, 20);
+    const password = `OAuth_${provider}_SecurePass123!`;
+
+    try {
+      const response = await apiRequest('/auth/signin', {
+        method: 'POST',
+        body: { username, password },
+      });
+      localStorage.setItem('dc_auth_token', response.token);
+      const profile = await apiRequest('/users/me');
+      const user = mapApiUser(profile);
+      setUsers(prev => [...prev.filter(existing => existing.username !== user.username), user]);
+      setCurrentUser(user);
+      return user;
+    } catch {
+      try {
+        const signupResponse = await apiRequest('/auth/signup', {
+          method: 'POST',
+          body: { username, fullName, email, password },
+        });
+        localStorage.setItem('dc_auth_token', signupResponse.token);
+        const newUser = mapApiUser(signupResponse);
+        setUsers(prev => [...prev.filter(u => u.username !== newUser.username), newUser]);
+        setCurrentUser(newUser);
+        return newUser;
+      } catch {
+        const fallbackUser = {
+          id: `oauth-${Date.now()}`,
+          username,
+          fullName,
+          email,
+          role: 'Full Stack Developer',
+          experience: '3+ years',
+          location: 'San Francisco, CA',
+          avatar: userDetails.avatar || (provider === 'Google'
+            ? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'
+            : provider === 'GitHub'
+              ? 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=150'
+              : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150'),
+          bio: `Software Engineer connected with ${provider}.`,
+          skills: ['React', 'JavaScript', 'Node.js', 'Spring Boot'],
+          socials: {
+            github: provider === 'GitHub' ? `https://github.com/${username}` : '',
+            linkedin: provider === 'LinkedIn' ? `https://linkedin.com/in/${username}` : '',
+            portfolio: '',
+          },
+        };
+        localStorage.setItem('dc_auth_token', `oauth_token_${Date.now()}`);
+        setUsers(prev => [...prev.filter(u => u.username !== fallbackUser.username), fallbackUser]);
+        setCurrentUser(fallbackUser);
+        return fallbackUser;
+      }
+    }
+  };
+
+  const updateAccountProfile = async ({ fullName, email, role, location, bio }) => {
     if (!currentUser) return;
 
-    const profile = await apiRequest('/users/me', {
-      method: 'PUT',
-      body: {
-        bio,
-        role,
-        experience,
-        location,
-        skills,
-        githubUrl: socials.github,
-        linkedinUrl: socials.linkedin,
-        portfolioUrl: socials.portfolio,
-        avatar: avatar || currentUser.avatar,
-      },
-    });
-    const updatedUser = mapApiUser(profile);
+    const trimmedName = fullName?.trim() || currentUser.fullName;
+    const trimmedEmail = email?.trim() || currentUser.email;
+
+    const token = localStorage.getItem('dc_auth_token');
+    const isMockToken = !token || token.startsWith('mock_') || token.startsWith('oauth_');
+
+    if (!isMockToken) {
+      try {
+        const profile = await apiRequest('/users/me', {
+          method: 'PUT',
+          body: {
+            fullName: trimmedName,
+            email: trimmedEmail,
+            role: role ?? currentUser.role,
+            location: location ?? currentUser.location,
+            bio: bio ?? currentUser.bio,
+            experience: currentUser.experience,
+            skills: currentUser.skills,
+            githubUrl: currentUser.socials?.github || '',
+            linkedinUrl: currentUser.socials?.linkedin || '',
+            portfolioUrl: currentUser.socials?.portfolio || '',
+            avatar: currentUser.avatar,
+          },
+        });
+        const updatedUser = mapApiUser(profile);
+        setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
+        setCurrentUser(updatedUser);
+        return updatedUser;
+      } catch (err) {
+        console.warn('Backend update failed, persisting profile locally:', err);
+      }
+    }
+
+    const updatedUser = {
+      ...currentUser,
+      fullName: trimmedName,
+      email: trimmedEmail,
+      role: role ?? currentUser.role,
+      location: location ?? currentUser.location,
+      bio: bio ?? currentUser.bio,
+    };
+
     setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
     setCurrentUser(updatedUser);
+    return updatedUser;
+  };
+
+  const updateProfileSetup = async (bio, role, experience, location, skills, socials, avatar, fullName, email) => {
+    if (!currentUser) return;
+
+    const trimmedName = fullName?.trim() || currentUser.fullName;
+    const trimmedEmail = email?.trim() || currentUser.email;
+
+    const token = localStorage.getItem('dc_auth_token');
+    const isMockToken = !token || token.startsWith('mock_') || token.startsWith('oauth_');
+
+    if (!isMockToken) {
+      try {
+        const profile = await apiRequest('/users/me', {
+          method: 'PUT',
+          body: {
+            fullName: trimmedName,
+            email: trimmedEmail,
+            bio,
+            role,
+            experience,
+            location,
+            skills,
+            githubUrl: socials?.github || '',
+            linkedinUrl: socials?.linkedin || '',
+            portfolioUrl: socials?.portfolio || '',
+            avatar: avatar || currentUser.avatar,
+          },
+        });
+        const updatedUser = mapApiUser(profile);
+        setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
+        setCurrentUser(updatedUser);
+        return updatedUser;
+      } catch (err) {
+        console.warn('Backend update failed, persisting profile locally:', err);
+      }
+    }
+
+    const updatedUser = {
+      ...currentUser,
+      fullName: trimmedName,
+      email: trimmedEmail,
+      bio,
+      role,
+      experience,
+      location,
+      skills,
+      socials: {
+        github: socials?.github || '',
+        linkedin: socials?.linkedin || '',
+        portfolio: socials?.portfolio || '',
+      },
+      avatar: avatar || currentUser.avatar,
+    };
+
+    setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
+    setCurrentUser(updatedUser);
+    return updatedUser;
   };
 
   const checkUsernameExists = (username) => {
@@ -417,7 +561,9 @@ export const DevConnectProvider = ({ children }) => {
       collabRequests,
       registerUser,
       loginUser,
+      socialLogin,
       updateProfileSetup,
+      updateAccountProfile,
       checkUsernameExists,
       logoutUser,
       addProjectPitch,

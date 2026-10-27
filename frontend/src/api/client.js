@@ -17,7 +17,12 @@ export async function apiRequest(path, { method = 'GET', body } = {}) {
     try {
       payload = JSON.parse(responseText);
     } catch {
-      payload = { message: responseText };
+      const isHtml = responseText.trim().startsWith('<');
+      payload = { 
+        message: isHtml 
+          ? `Backend service returned an invalid response (HTTP ${response.status}).` 
+          : responseText 
+      };
     }
   }
 

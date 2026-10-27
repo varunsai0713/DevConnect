@@ -25,7 +25,12 @@ import {
   Linkedin,
   Settings,
   FolderPlus,
-  ChevronDown
+  ChevronDown,
+  Edit2,
+  Edit3,
+  Mail,
+  RefreshCw,
+  AlertTriangle
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -46,7 +51,8 @@ export default function DashboardPage() {
     handleCollabAction,
     toggleUserFollow, 
     clearNotifications,
-    logoutUser 
+    logoutUser,
+    updateAccountProfile 
   } = useDevConnect();
 
   React.useEffect(() => {
@@ -79,6 +85,59 @@ export default function DashboardPage() {
   // Show dropdown menus
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
+
+  // Edit Name & Email modal state
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [editFullName, setEditFullName] = useState(currentUser?.fullName || '');
+  const [editEmail, setEditEmail] = useState(currentUser?.email || '');
+  const [editRole, setEditRole] = useState(currentUser?.role || '');
+  const [editLocation, setEditLocation] = useState(currentUser?.location || '');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [editSuccessMsg, setEditSuccessMsg] = useState('');
+  const [editErrorMsg, setEditErrorMsg] = useState('');
+
+  React.useEffect(() => {
+    if (currentUser) {
+      setEditFullName(currentUser.fullName || '');
+      setEditEmail(currentUser.email || '');
+      setEditRole(currentUser.role || '');
+      setEditLocation(currentUser.location || '');
+    }
+  }, [currentUser]);
+
+  const handleSaveAccountProfile = async (e) => {
+    e.preventDefault();
+    if (!editFullName.trim()) {
+      setEditErrorMsg('Please enter your full name.');
+      return;
+    }
+    if (!editEmail.trim()) {
+      setEditErrorMsg('Please enter your email address.');
+      return;
+    }
+
+    setIsSavingProfile(true);
+    setEditErrorMsg('');
+    setEditSuccessMsg('');
+
+    try {
+      await updateAccountProfile({
+        fullName: editFullName.trim(),
+        email: editEmail.trim(),
+        role: editRole.trim(),
+        location: editLocation.trim(),
+      });
+      setEditSuccessMsg('Name and email updated successfully!');
+      setTimeout(() => {
+        setIsSavingProfile(false);
+        setShowEditProfileModal(false);
+        setEditSuccessMsg('');
+      }, 600);
+    } catch (err) {
+      setEditErrorMsg(err.message || 'Failed to update profile.');
+      setIsSavingProfile(false);
+    }
+  };
 
   // Filter projects/discussions lists based on search query
   const filteredProjects = useMemo(() => {
@@ -266,13 +325,21 @@ export default function DashboardPage() {
                   <span className="text-[9px] text-slate-500 font-mono tracking-wide mt-0.5 truncate">{currentUser?.email}</span>
                 </div>
                 <div className="p-1 space-y-0.5">
+                  <button 
+                    onClick={() => { setShowEditProfileModal(true); setShowUserMenu(false); }}
+                    className="w-full flex items-center gap-2 py-2 px-3 text-xs text-indigo-400 hover:text-white hover:bg-slate-900 transition rounded-lg text-left cursor-pointer font-medium"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Edit Name &amp; Email</span>
+                  </button>
+
                   <Link 
                     to="/profile-setup" 
                     onClick={() => setShowUserMenu(false)}
                     className="flex items-center gap-2 py-2 px-3 text-xs text-slate-350 hover:text-white hover:bg-slate-900 transition rounded-lg"
                   >
                     <Settings className="w-3.5 h-3.5" />
-                    <span>Tune Profile setup</span>
+                    <span>Profile setup</span>
                   </Link>
 
                   <button 
@@ -280,7 +347,7 @@ export default function DashboardPage() {
                     className="w-full flex items-center gap-2 py-2 px-3 text-xs text-rose-400 hover:text-rose-200 hover:bg-rose-950/20 transition rounded-lg text-left"
                   >
                     <LogOut className="w-3.5 h-3.5" />
-                    <span>Disconnect Tunnel</span>
+                    <span>Logout</span>
                   </button>
                 </div>
               </div>
@@ -308,13 +375,31 @@ export default function DashboardPage() {
                 />
                 <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-slate-900" />
               </div>
-              <h3 className="text-sm font-black text-white mt-3 truncate max-w-full">{currentUser?.fullName}</h3>
-              <p className="text-[11px] text-indigo-400 font-semibold font-mono mt-0.5 line-clamp-1">{currentUser?.role}</p>
+              <div className="flex items-center justify-center gap-1.5 mt-3 max-w-full">
+                <h3 className="text-sm font-black text-white truncate">{currentUser?.fullName}</h3>
+                <button
+                  onClick={() => setShowEditProfileModal(true)}
+                  title="Edit Name & Email"
+                  className="text-slate-500 hover:text-indigo-400 p-1 rounded hover:bg-slate-800 transition cursor-pointer"
+                >
+                  <Edit2 className="w-3 h-3" />
+                </button>
+              </div>
+              <span className="text-[10px] text-slate-500 font-mono tracking-tight max-w-full truncate block mt-0.5">{currentUser?.email}</span>
+              <p className="text-[11px] text-indigo-400 font-semibold font-mono mt-1 line-clamp-1">{currentUser?.role}</p>
               
               <div className="flex items-center gap-1.5 mt-2 bg-slate-950 border border-slate-850 px-2.5 py-1 rounded text-[10px] text-slate-400 font-mono">
                 <MapPin className="w-3 h-3 text-indigo-400" />
                 <span>{currentUser?.location || 'San Francisco, CA'}</span>
               </div>
+
+              <button
+                onClick={() => setShowEditProfileModal(true)}
+                className="mt-3 w-full py-1.5 px-3 bg-slate-950 hover:bg-slate-800/80 border border-slate-800 hover:border-indigo-500/50 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Edit Name &amp; Email</span>
+              </button>
             </div>
 
             <p className="text-[11.5px] text-slate-400 leading-relaxed text-center mt-3 pt-1">
@@ -935,6 +1020,135 @@ export default function DashboardPage() {
               </div>
             </form>
 
+          </div>
+        </div>
+      )}
+
+      {/* EDIT NAME & EMAIL PROFILE MODAL */}
+      {showEditProfileModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+          <div 
+            className="bg-slate-900 border border-slate-800 p-6 sm:p-7 rounded-2xl w-full max-w-md shadow-2xl relative font-sans text-slate-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                  <User className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Edit Profile Details</h3>
+                  <p className="text-[11px] text-slate-400">Change your display name and email address.</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowEditProfileModal(false)} 
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {editErrorMsg && (
+              <div className="mt-4 p-3 bg-rose-950/50 border border-rose-900/50 text-rose-400 text-xs rounded-lg flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+                <span>{editErrorMsg}</span>
+              </div>
+            )}
+
+            {editSuccessMsg && (
+              <div className="mt-4 p-3 bg-emerald-950/50 border border-emerald-900/50 text-emerald-400 text-xs rounded-lg flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
+                <span>{editSuccessMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveAccountProfile} className="space-y-4 mt-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                  Full Name / Display Name
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                  <input
+                    type="text"
+                    required
+                    value={editFullName}
+                    onChange={(e) => setEditFullName(e.target.value)}
+                    placeholder="Enter your name"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9.5 pr-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                  <input
+                    type="email"
+                    required
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9.5 pr-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                  Professional Role / Title
+                </label>
+                <input
+                  type="text"
+                  value={editRole}
+                  onChange={(e) => setEditRole(e.target.value)}
+                  placeholder="e.g. Lead Full Stack Developer"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                  Location
+                </label>
+                <input
+                  type="text"
+                  value={editLocation}
+                  onChange={(e) => setEditLocation(e.target.value)}
+                  placeholder="e.g. Bengaluru, India"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowEditProfileModal(false)}
+                  className="px-4 py-2 text-xs text-slate-400 hover:text-white transition font-medium cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingProfile}
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold rounded-lg text-xs shadow-md shadow-indigo-600/20 transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {isSavingProfile ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Save Changes</span>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

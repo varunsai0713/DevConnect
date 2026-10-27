@@ -43,6 +43,7 @@ public class UserController {
         return userRepository.findByUsername(principal.getUsername())
                 .map(user -> {
                     if (profile.getFullName() != null) user.setFullName(profile.getFullName());
+                    if (profile.getEmail() != null) user.setEmail(profile.getEmail());
                     if (profile.getRole() != null) user.setRole(profile.getRole());
                     user.setExperience(profile.getExperience());
                     user.setLocation(profile.getLocation());
@@ -77,6 +78,7 @@ public class UserController {
                         return ResponseEntity.status(403).<UserProfileResponse>build();
                     }
                     if (profile.getFullName() != null) user.setFullName(profile.getFullName());
+                    if (profile.getEmail() != null) user.setEmail(profile.getEmail());
                     if (profile.getRole() != null) user.setRole(profile.getRole());
                     user.setExperience(profile.getExperience());
                     user.setLocation(profile.getLocation());

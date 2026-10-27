@@ -14,7 +14,8 @@ import {
   RefreshCw,
   Sparkles,
   Award,
-  AlertTriangle
+  AlertTriangle,
+  Mail
 } from 'lucide-react';
 
 export default function CompleteProfilePage() {
@@ -34,6 +35,8 @@ export default function CompleteProfilePage() {
   ];
 
   // State values holding completed credentials
+  const [fullName, setFullName] = useState(currentUser?.fullName || '');
+  const [email, setEmail] = useState(currentUser?.email || '');
   const [avatar, setAvatar] = useState(currentUser?.avatar || avatarPresets[0]);
   const [bio, setBio] = useState(currentUser?.bio || '');
   const [role, setRole] = useState(currentUser?.role || 'Full Stack Developer');
@@ -78,11 +81,14 @@ export default function CompleteProfilePage() {
         location,
         selectedSkills,
         { github, linkedin, portfolio },
-        avatar
+        avatar,
+        fullName,
+        email
       );
       navigate('/dashboard');
     } catch (requestError) {
-      setError(requestError.message);
+      const msg = requestError?.message || 'Failed to complete profile setup.';
+      setError(msg.includes('<') ? 'Unable to sync with remote server. Profile persisted locally.' : msg);
       setIsSubmitting(false);
     }
   };
@@ -157,9 +163,45 @@ export default function CompleteProfilePage() {
             </div>
           </div>
 
+          {/* Name & Email Credentials */}
+          <div>
+            <label className="block text-[10.5px] font-mono uppercase tracking-widest text-slate-400 mb-2.5">2. Identity Credentials</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-[10px] text-slate-500 mb-1">Full Name</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-600" />
+                  <input 
+                    type="text" 
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="e.g. Alex Rivera"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] text-slate-500 mb-1">Email Address</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-600" />
+                  <input 
+                    type="email" 
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="e.g. alex.rivera@example.com"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Role, Experience, Location, Bio */}
           <div>
-            <label className="block text-[10.5px] font-mono uppercase tracking-widest text-slate-400 mb-2.5">2. Fundamental Dev Context Attributes</label>
+            <label className="block text-[10.5px] font-mono uppercase tracking-widest text-slate-400 mb-2.5">3. Fundamental Dev Context Attributes</label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div>
                 <label className="block text-[10px] text-slate-500 mb-1">Primary Job Alignment Tag</label>
@@ -225,7 +267,7 @@ export default function CompleteProfilePage() {
 
           {/* Interactive Skills Toggles */}
           <div>
-            <label className="block text-[10.5px] font-mono uppercase tracking-widest text-slate-400 mb-2">3. Technical Stacks Capabilities</label>
+            <label className="block text-[10.5px] font-mono uppercase tracking-widest text-slate-400 mb-2">4. Technical Stacks Capabilities</label>
             <p className="text-[10px] text-slate-500 mb-3.5">
               Select specific technologies representing your primary development pipeline:
             </p>
@@ -253,7 +295,7 @@ export default function CompleteProfilePage() {
 
           {/* Social Connections */}
           <div>
-            <label className="block text-[10.5px] font-mono uppercase tracking-widest text-slate-400 mb-2.5">4. Developer Web Endpoint Links</label>
+            <label className="block text-[10.5px] font-mono uppercase tracking-widest text-slate-400 mb-2.5">5. Developer Web Endpoint Links</label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-[10px] text-slate-500 mb-1">GitHub URL</label>
