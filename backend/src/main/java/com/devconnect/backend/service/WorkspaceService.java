@@ -6,6 +6,7 @@ import com.devconnect.backend.repository.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -85,9 +86,52 @@ public class WorkspaceService {
                 .name("general")
                 .createdBy(caller)
                 .build();
-        channelRepository.save(generalChannel);
+        generalChannel = channelRepository.save(generalChannel);
 
-        return toWorkspaceResponse(workspace, WorkspaceRole.OWNER, 0, 1, 1);
+        List<ChannelResponse> initialChannels = List.of(ChannelResponse.builder()
+                .id(generalChannel.getId())
+                .workspaceId(workspace.getId())
+                .name(generalChannel.getName())
+                .createdAt(generalChannel.getCreatedAt())
+                .unreadCount(0)
+                .build());
+
+        List<WorkspaceMemberResponse> initialMembers = List.of(WorkspaceMemberResponse.builder()
+                .userId(caller.getId())
+                .username(caller.getUsername())
+                .fullName(caller.getFullName())
+                .avatar(caller.getAvatar())
+                .role(WorkspaceRole.OWNER)
+                .joinedAt(ownerMember.getJoinedAt())
+                .build());
+
+        return WorkspaceResponse.builder()
+                .id(workspace.getId())
+                .projectId(workspace.getProject().getId())
+                .name(workspace.getName())
+                .createdBy(workspace.getCreatedBy().getUsername())
+                .createdAt(workspace.getCreatedAt())
+                .userRole(WorkspaceRole.OWNER)
+                .totalUnread(0)
+                .membersCount(1)
+                .channelsCount(1)
+                .channels(initialChannels)
+                .members(initialMembers)
+                .build();
+    }
+
+    @Transactional
+    public WorkspaceResponse createWorkspaceDirectly(String name, String description, String username) {
+        User caller = getUserByUsername(username);
+
+        Project project = Project.builder()
+                .title(name)
+                .description(StringUtils.hasText(description) ? description : "Project for workspace " + name)
+                .creator(caller)
+                .build();
+        project = projectRepository.save(project);
+
+        return createWorkspaceForProject(project.getId(), username);
     }
 
     @Transactional(readOnly = true)
@@ -101,14 +145,48 @@ public class WorkspaceService {
                     .map(WorkspaceMember::getRole)
                     .orElse(WorkspaceRole.MEMBER);
             long membersCount = workspaceMemberRepository.countByWorkspaceId(ws.getId());
-            List<Channel> channels = channelRepository.findByWorkspaceIdOrderByCreatedAtAsc(ws.getId());
+            List<Channel> channelsList = channelRepository.findByWorkspaceIdOrderByCreatedAtAsc(ws.getId());
             long totalUnread = 0;
-            for (Channel ch : channels) {
+            List<ChannelResponse> channelResponses = new java.util.ArrayList<>();
+            for (Channel ch : channelsList) {
                 Long lastReadId = channelReadRepository.findByChannelIdAndUserId(ch.getId(), caller.getId())
                         .map(ChannelRead::getLastReadMessageId).orElse(0L);
-                totalUnread += messageRepository.countUnreadMessages(ch.getId(), lastReadId);
+                long unread = messageRepository.countUnreadMessages(ch.getId(), lastReadId);
+                totalUnread += unread;
+                channelResponses.add(ChannelResponse.builder()
+                        .id(ch.getId())
+                        .workspaceId(ch.getWorkspace().getId())
+                        .name(ch.getName())
+                        .createdAt(ch.getCreatedAt())
+                        .unreadCount(unread)
+                        .build());
             }
-            return toWorkspaceResponse(ws, role, totalUnread, membersCount, channels.size());
+
+            List<WorkspaceMemberResponse> members = workspaceMemberRepository.findByWorkspaceIdOrderByJoinedAtAsc(ws.getId())
+                    .stream()
+                    .map(m -> WorkspaceMemberResponse.builder()
+                            .userId(m.getUser().getId())
+                            .username(m.getUser().getUsername())
+                            .fullName(m.getUser().getFullName())
+                            .avatar(m.getUser().getAvatar())
+                            .role(m.getRole())
+                            .joinedAt(m.getJoinedAt())
+                            .build())
+                    .toList();
+
+            return WorkspaceResponse.builder()
+                    .id(ws.getId())
+                    .projectId(ws.getProject().getId())
+                    .name(ws.getName())
+                    .createdBy(ws.getCreatedBy().getUsername())
+                    .createdAt(ws.getCreatedAt())
+                    .userRole(role)
+                    .totalUnread(totalUnread)
+                    .membersCount(membersCount)
+                    .channelsCount(channelResponses.size())
+                    .channels(channelResponses)
+                    .members(members)
+                    .build();
         }).toList();
     }
 

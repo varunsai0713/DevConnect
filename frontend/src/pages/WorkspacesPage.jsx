@@ -31,6 +31,7 @@ export default function WorkspacesPage() {
     setActiveWorkspaceId, 
     setActiveChannelId, 
     fetchWorkspaces,
+    createWorkspace,
     fetchWorkspaceMembers,
     createChannel,
     removeWorkspaceMember,
@@ -44,9 +45,13 @@ export default function WorkspacesPage() {
   const [mobilePane, setMobilePane] = useState('chat');
   const [showWorkspaceDropdown, setShowWorkspaceDropdown] = useState(false);
   const [showCreateChannelModal, setShowCreateChannelModal] = useState(false);
+  const [showCreateWorkspaceModal, setShowCreateWorkspaceModal] = useState(false);
   const [showJoinRequestsModal, setShowJoinRequestsModal] = useState(false);
   const [newChannelName, setNewChannelName] = useState('');
+  const [newWorkspaceName, setNewWorkspaceName] = useState('');
+  const [newWorkspaceDesc, setNewWorkspaceDesc] = useState('');
   const [channelError, setChannelError] = useState('');
+  const [workspaceCreateError, setWorkspaceCreateError] = useState('');
   const [pendingRequests, setPendingRequests] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionMessage, setActionMessage] = useState('');
@@ -106,6 +111,9 @@ export default function WorkspacesPage() {
         return import.meta.env.VITE_WS_URL;
       }
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return `${protocol}//${window.location.hostname}:8080/ws`;
+      }
       return `${protocol}//${window.location.host}/ws`;
     };
 
@@ -470,6 +478,36 @@ export default function WorkspacesPage() {
     }
   };
 
+  // Workspace Creation
+  const handleCreateWorkspaceSubmit = async (e) => {
+    e.preventDefault();
+    setWorkspaceCreateError('');
+    const trimmed = newWorkspaceName.trim();
+    if (trimmed.length < 2 || trimmed.length > 50) {
+      setWorkspaceCreateError('Workspace name must be between 2 and 50 characters.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const created = await createWorkspace({ name: trimmed, description: newWorkspaceDesc.trim() });
+      setNewWorkspaceName('');
+      setNewWorkspaceDesc('');
+      setShowCreateWorkspaceModal(false);
+      setActionMessage(`Workspace "${trimmed}" created successfully!`);
+      setTimeout(() => setActionMessage(''), 3000);
+      if (created && created.id) {
+        setActiveWorkspaceId(created.id);
+        if (created.channels && created.channels.length > 0) {
+          setActiveChannelId(created.channels[0].id);
+        }
+      }
+    } catch (err) {
+      setWorkspaceCreateError(err.message || 'Failed to create workspace.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // Channel Creation
   const handleCreateChannelSubmit = async (e) => {
     e.preventDefault();
@@ -562,14 +600,97 @@ export default function WorkspacesPage() {
         </div>
         <h2 className="text-xl font-black text-white">No Workspaces Joined Yet</h2>
         <p className="text-xs text-slate-400 max-w-sm mt-2 mb-6">
-          Workspaces are collaborative project hubs with dedicated channels and real-time chat. Launch a handshake proposal on the Feed or create a workspace for your own project!
+          Workspaces are collaborative project hubs with dedicated channels and real-time chat. Create your own workspace right here or explore existing projects on the Feed!
         </p>
-        <button
-          onClick={() => window.location.href = '/dashboard'}
-          className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-indigo-600/30 transition cursor-pointer"
-        >
-          Explore Projects Feed
-        </button>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowCreateWorkspaceModal(true)}
+            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-indigo-600/30 transition cursor-pointer flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Create Workspace</span>
+          </button>
+          <button
+            onClick={() => window.location.href = '/dashboard'}
+            className="px-4 py-2.5 bg-slate-900 hover:bg-slate-850 text-slate-300 hover:text-white border border-slate-800 rounded-lg text-xs font-semibold transition cursor-pointer"
+          >
+            Explore Projects Feed
+          </button>
+        </div>
+
+        {/* Modal for creating workspace directly */}
+        {showCreateWorkspaceModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+            <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl text-left">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <h3 className="text-sm font-black text-white flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-indigo-400" />
+                  <span>Create Workspace</span>
+                </h3>
+                <button 
+                  onClick={() => setShowCreateWorkspaceModal(false)}
+                  className="text-slate-500 hover:text-white"
+                  aria-label="Close modal"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateWorkspaceSubmit} className="mt-4 space-y-4">
+                <div>
+                  <label className="block text-[11px] font-mono uppercase text-slate-400 mb-1.5">
+                    Workspace Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Realtime Architecture"
+                    value={newWorkspaceName}
+                    onChange={(e) => setNewWorkspaceName(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-mono uppercase text-slate-400 mb-1.5">
+                    Description (Optional)
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="Brief description of this project workspace..."
+                    value={newWorkspaceDesc}
+                    onChange={(e) => setNewWorkspaceDesc(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 resize-none"
+                  />
+                </div>
+
+                {workspaceCreateError && (
+                  <div className="p-2.5 rounded bg-rose-950/60 border border-rose-900/50 text-rose-300 text-xs">
+                    {workspaceCreateError}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateWorkspaceModal(false)}
+                    className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-4 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-md shadow-indigo-600/30 disabled:opacity-50"
+                  >
+                    {isSubmitting ? 'Creating...' : 'Create Workspace'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -662,6 +783,17 @@ export default function WorkspacesPage() {
                     {ws.id === currentWorkspace.id && <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />}
                   </button>
                 ))}
+
+                <button
+                  onClick={() => {
+                    setShowWorkspaceDropdown(false);
+                    setShowCreateWorkspaceModal(true);
+                  }}
+                  className="w-full flex items-center gap-2 p-2 rounded-lg text-xs font-semibold text-indigo-400 hover:bg-indigo-950/40 border border-dashed border-indigo-800/60 transition cursor-pointer mt-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Create Workspace</span>
+                </button>
               </div>
             </>
           )}
@@ -1145,6 +1277,81 @@ export default function WorkspacesPage() {
                 ))
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          MODAL: CREATE WORKSPACE DIRECTLY
+          ========================================================================= */}
+      {showCreateWorkspaceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl text-left">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h3 className="text-sm font-black text-white flex items-center gap-2">
+                <Layers className="w-4 h-4 text-indigo-400" />
+                <span>Create Workspace</span>
+              </h3>
+              <button 
+                onClick={() => setShowCreateWorkspaceModal(false)}
+                className="text-slate-500 hover:text-white"
+                aria-label="Close modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateWorkspaceSubmit} className="mt-4 space-y-4">
+              <div>
+                <label className="block text-[11px] font-mono uppercase text-slate-400 mb-1.5">
+                  Workspace Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Realtime Architecture"
+                  value={newWorkspaceName}
+                  onChange={(e) => setNewWorkspaceName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-mono uppercase text-slate-400 mb-1.5">
+                  Description (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Brief description of this project workspace..."
+                  value={newWorkspaceDesc}
+                  onChange={(e) => setNewWorkspaceDesc(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 resize-none"
+                />
+              </div>
+
+              {workspaceCreateError && (
+                <div className="p-2.5 rounded bg-rose-950/60 border border-rose-900/50 text-rose-300 text-xs">
+                  {workspaceCreateError}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateWorkspaceModal(false)}
+                  className="px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-md shadow-indigo-600/30 disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Creating...' : 'Create Workspace'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

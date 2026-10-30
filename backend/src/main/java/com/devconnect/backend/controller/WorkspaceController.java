@@ -30,6 +30,15 @@ public class WorkspaceController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @PostMapping("/workspaces")
+    public ResponseEntity<WorkspaceResponse> createWorkspaceDirectly(
+            @Valid @RequestBody CreateWorkspaceRequest request,
+            @AuthenticationPrincipal UserDetails principal
+    ) {
+        WorkspaceResponse response = workspaceService.createWorkspaceDirectly(request.getName(), request.getDescription(), principal.getUsername());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
     @GetMapping("/workspaces")
     public ResponseEntity<List<WorkspaceResponse>> getUserWorkspaces(
             @AuthenticationPrincipal UserDetails principal

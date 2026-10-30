@@ -23,39 +23,6 @@ const command = (windowsCommand, unixCommand, unixArgs) => ({
   args: isWindows ? ['/d', '/s', '/c', windowsCommand] : unixArgs,
 });
 
-const processes = [
-  {
-    name: 'frontend',
-    ...command('npm.cmd --prefix frontend run dev', 'npm', ['--prefix', 'frontend', 'run', 'dev']),
-  },
-  {
-    name: 'backend',
-    ...command(
-      'backend\\mvnw.cmd -f backend\\pom.xml spring-boot:run',
-      'sh',
-      ['./backend/mvnw', '-f', 'backend/pom.xml', 'spring-boot:run'],
-    ),
-  },
-];
-
-let shuttingDown = false;
-let failure = false;
-const children = [];
-
-const stopChildren = (signal = 'SIGTERM') => {
-  if (shuttingDown) return;
-  shuttingDown = true;
-  for (const child of children) {
-    if (child.exitCode === null) {
-      try {
-        child.kill(signal);
-      } catch {
-        // ignore
-      }
-    }
-  }
-};
-
 const tryStartDatabase = () => {
   return new Promise((resolve) => {
     try {
@@ -76,8 +43,35 @@ const databaseReady = await tryStartDatabase();
 
 if (!databaseReady) {
   console.warn('\n[!] Notice: PostgreSQL container not running (Docker Desktop is stopped or not found).');
-  console.warn('[!] Starting frontend service...\n');
+  console.warn('[!] Automatically starting Spring Boot backend with in-memory H2 profile so live chat & APIs work immediately!\n');
 }
+
+const backendRunCmd = databaseReady
+  ? 'backend\\mvnw.cmd -f backend\\pom.xml spring-boot:run'
+  : 'backend\\mvnw.cmd -f backend\\pom.xml spring-boot:run -Dspring-boot.run.arguments=--spring.profiles.active=h2';
+
+const backendUnixArgs = databaseReady
+  ? ['./backend/mvnw', '-f', 'backend/pom.xml', 'spring-boot:run']
+  : ['./backend/mvnw', '-f', 'backend/pom.xml', 'spring-boot:run', '-Dspring-boot.run.arguments=--spring.profiles.active=h2'];
+
+const processes = [
+  {
+    name: 'frontend',
+    ...command('npm.cmd --prefix frontend run dev', 'npm', ['--prefix', 'frontend', 'run', 'dev']),
+  },
+  {
+    name: 'backend',
+    ...command(
+      backendRunCmd,
+      'sh',
+      backendUnixArgs,
+    ),
+  },
+];
+
+let shuttingDown = false;
+let failure = false;
+const children = [];
 
 for (const processConfig of processes) {
   const child = spawn(processConfig.command, processConfig.args, {

@@ -6,6 +6,8 @@ import com.devconnect.backend.repository.ProjectRepository;
 import com.devconnect.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,11 +29,22 @@ public class ProjectController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createProject(@RequestBody Project project, @RequestParam Long creatorId) {
-        return userRepository.findById(creatorId).map(user -> {
-            project.setCreator(user);
-            return ResponseEntity.ok(projectRepository.save(project));
-        }).orElse(ResponseEntity.badRequest().body(null));
+    public ResponseEntity<?> createProject(
+            @RequestBody Project project,
+            @RequestParam(required = false) Long creatorId,
+            @AuthenticationPrincipal UserDetails principal
+    ) {
+        User creator = null;
+        if (creatorId != null) {
+            creator = userRepository.findById(creatorId).orElse(null);
+        } else if (principal != null) {
+            creator = userRepository.findByUsername(principal.getUsername()).orElse(null);
+        }
+        if (creator == null) {
+            return ResponseEntity.badRequest().body("Creator could not be determined.");
+        }
+        project.setCreator(creator);
+        return ResponseEntity.ok(projectRepository.save(project));
     }
 
     @GetMapping("/{id}")

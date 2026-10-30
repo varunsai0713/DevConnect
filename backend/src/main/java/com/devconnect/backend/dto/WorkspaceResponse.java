@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -22,5 +23,6 @@ public class WorkspaceResponse {
     private long totalUnread;
     private long membersCount;
     private long channelsCount;
+    private List<ChannelResponse> channels;
+    private List<WorkspaceMemberResponse> members;
 }
-
