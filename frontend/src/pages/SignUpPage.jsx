@@ -53,9 +53,9 @@ export default function SignUpPage() {
     event.preventDefault();
     setError('');
 
-    const normalizedUsername = username.trim().toLowerCase();
-    if (normalizedUsername.length < 3) {
-      setError('Your username must be at least 3 characters long.');
+    const rawInput = username.trim();
+    if (rawInput.length < 3) {
+      setError('Please enter a valid username or email (at least 3 characters).');
       return;
     }
 
@@ -81,12 +81,34 @@ export default function SignUpPage() {
       return;
     }
 
+    let emailToUse = '';
+    let usernameToUse = '';
+    let fullNameToUse = '';
+
+    if (rawInput.includes('@')) {
+      emailToUse = rawInput.toLowerCase();
+      const extractedPrefix = rawInput.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '');
+      usernameToUse = (extractedPrefix || 'dev_user').slice(0, 20);
+      if (usernameToUse.length < 3) {
+        usernameToUse = `${usernameToUse}_dev`.slice(0, 20);
+      }
+      fullNameToUse = rawInput.split('@')[0];
+    } else {
+      usernameToUse = rawInput.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20);
+      if (usernameToUse.length < 3) {
+        setError('Username must contain at least 3 valid characters (letters, numbers, underscore).');
+        return;
+      }
+      emailToUse = `${usernameToUse.toLowerCase()}@devconnect.local`;
+      fullNameToUse = usernameToUse;
+    }
+
     setIsSubmitting(true);
     try {
-      await registerUser(normalizedUsername, normalizedUsername, `${normalizedUsername}@devconnect.local`, password);
+      await registerUser(usernameToUse, fullNameToUse, emailToUse, password);
       navigate('/profile-setup');
     } catch (requestError) {
-      setError(requestError.message);
+      setError(requestError.message || 'Registration failed. Please try again.');
       setIsSubmitting(false);
     }
   };
@@ -143,7 +165,7 @@ export default function SignUpPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="signup-username" className="block text-xs font-medium text-slate-300 mb-1.5">
-              Username
+              Username or Email
             </label>
             <div className="relative">
               <User className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
@@ -155,7 +177,7 @@ export default function SignUpPage() {
                 minLength={3}
                 value={username}
                 onChange={(event) => setUsername(event.target.value.replace(/\s+/g, ''))}
-                placeholder="Choose a username"
+                placeholder="Enter your username or email"
                 disabled={isSubmitting}
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-10 pr-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition placeholder:text-slate-600 disabled:opacity-50"
               />

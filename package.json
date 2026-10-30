@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node scripts/dev.js"
+    "dev": "node scripts/dev.js",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "backend\\mvnw.cmd -f backend\\pom.xml spring-boot:run"
   }
 }

@@ -30,10 +30,11 @@ import {
   Edit3,
   Mail,
   RefreshCw,
-  AlertTriangle
+  AlertTriangle,
+  Layers
 } from 'lucide-react';
 
-export default function DashboardPage() {
+export default function DashboardPage({ insideShell = false }) {
   const navigate = useNavigate();
   const { 
     currentUser, 
@@ -42,6 +43,9 @@ export default function DashboardPage() {
     users, 
     notifications, 
     collabRequests, 
+    workspaces,
+    createWorkspace,
+    setActiveWorkspaceId,
     likeProject, 
     addProjectPitch, 
     applyForCollaboration, 
@@ -225,7 +229,8 @@ export default function DashboardPage() {
         backgroundSize: '40px 40px' 
       }} />
 
-      {/* Top Navbar Header */}
+      {/* Top Navbar Header (Rendered only when not inside persistent AppShell) */}
+      {!insideShell && (
       <nav className="relative z-35 border-b border-slate-900 bg-[#020617]/80 backdrop-blur-md sticky top-0 px-6 py-3.5 flex items-center justify-between">
         
         {/* Brand */}
@@ -357,6 +362,7 @@ export default function DashboardPage() {
         </div>
 
       </nav>
+      )}
 
       {/* Main Grid Workspace Container */}
       <main id="dashboard-workspace" className="relative z-10 max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -596,12 +602,44 @@ export default function DashboardPage() {
                         </span>
                       </div>
 
-                      <button 
-                        onClick={() => setApplyProjectId(proj.id)}
-                        className="text-xs bg-slate-950 hover:bg-slate-850 hover:text-white border border-slate-800 font-mono tracking-wide px-3.5 py-1.5 rounded transition cursor-pointer"
-                      >
-                        CONNECTION HANDSHAKE
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {((proj.creator?.username && proj.creator.username === currentUser?.username) || 
+                          (proj.creator?.fullName && proj.creator.fullName === currentUser?.fullName)) ? (
+                          (() => {
+                            const existingWs = workspaces.find(w => String(w.projectId) === String(proj.id));
+                            return existingWs ? (
+                              <button
+                                onClick={() => {
+                                  setActiveWorkspaceId(existingWs.id);
+                                  navigate('/workspaces');
+                                }}
+                                className="text-xs bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600/30 border border-indigo-500/40 font-mono tracking-wide px-3.5 py-1.5 rounded transition cursor-pointer flex items-center gap-1.5"
+                              >
+                                <Layers className="w-3.5 h-3.5" />
+                                <span>OPEN WORKSPACE</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={async () => {
+                                  await createWorkspace(proj.id);
+                                  navigate('/workspaces');
+                                }}
+                                className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-mono tracking-wide px-3.5 py-1.5 rounded transition shadow-sm shadow-indigo-600/30 cursor-pointer flex items-center gap-1.5"
+                              >
+                                <Layers className="w-3.5 h-3.5" />
+                                <span>CREATE WORKSPACE</span>
+                              </button>
+                            );
+                          })()
+                        ) : (
+                          <button 
+                            onClick={() => setApplyProjectId(proj.id)}
+                            className="text-xs bg-slate-950 hover:bg-slate-850 hover:text-white border border-slate-800 font-mono tracking-wide px-3.5 py-1.5 rounded transition cursor-pointer"
+                          >
+                            CONNECTION HANDSHAKE
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                   </div>

@@ -71,13 +71,13 @@ public class AuthController {
                     .body(new MessageResponse("Error: Email is already in use!"));
         }
 
-        // Create new user's account
+        // Create new user's account with default USER role
         User user = User.builder()
                 .username(signUpRequest.getUsername())
                 .fullName(signUpRequest.getFullName())
                 .email(signUpRequest.getEmail())
                 .password(encoder.encode(signUpRequest.getPassword()))
-                .role("ROLE_USER")
+                .role("USER")
                 .build();
 
         User savedUser = userRepository.save(user);

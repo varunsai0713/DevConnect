@@ -10,6 +10,11 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import CompleteProfilePage from './pages/CompleteProfilePage';
 import DashboardPage from './pages/DashboardPage';
+import WorkspacesPage from './pages/WorkspacesPage';
+import ActivityPage from './pages/ActivityPage';
+
+// Import Shell
+import AppShell from './components/AppShell';
 
 export default function App() {
   return (
@@ -28,8 +33,31 @@ export default function App() {
           {/* Configuration Setup Attributes */}
           <Route path="/profile-setup" element={<CompleteProfilePage />} />
 
-          {/* Core Member Dashboard Hub */}
-          <Route path="/dashboard" element={<DashboardPage />} />
+          {/* Teams-style App Shell Logged-In Routes */}
+          <Route 
+            path="/dashboard" 
+            element={
+              <AppShell>
+                <DashboardPage insideShell={true} />
+              </AppShell>
+            } 
+          />
+          <Route 
+            path="/workspaces" 
+            element={
+              <AppShell>
+                <WorkspacesPage />
+              </AppShell>
+            } 
+          />
+          <Route 
+            path="/activity" 
+            element={
+              <AppShell>
+                <ActivityPage />
+              </AppShell>
+            } 
+          />
 
           {/* Redirection Fallbacks */}
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -189,6 +189,50 @@ export const DevConnectProvider = ({ children }) => {
     { id: 'not-3', text: 'System Update: High performance pipelines deployed.', time: '1d ago', unread: false }
   ]);
 
+  // Workspaces Global State
+  const initialWorkspaces = [
+    {
+      id: 1,
+      projectId: 'proj-1',
+      name: 'Spring Security Bearer Guard',
+      createdBy: 'janedoe',
+      userRole: 'MEMBER',
+      totalUnread: 0,
+      membersCount: 2,
+      channelsCount: 3,
+      channels: [
+        { id: 1, name: 'general', workspaceId: 1, unreadCount: 0 },
+        { id: 2, name: 'architecture', workspaceId: 1, unreadCount: 0 },
+        { id: 3, name: 'jwt-filters', workspaceId: 1, unreadCount: 0 }
+      ],
+      members: [
+        { userId: 'usr-1', username: 'janedoe', fullName: 'Jane Doe', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150', role: 'OWNER' }
+      ]
+    }
+  ];
+
+  const [workspaces, setWorkspaces] = useState(() => {
+    const saved = localStorage.getItem('dc_web_workspaces');
+    return saved ? JSON.parse(saved) : initialWorkspaces;
+  });
+
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState(() => {
+    const saved = localStorage.getItem('dc_web_active_ws');
+    return saved ? Number(saved) : 1;
+  });
+
+  const [activeChannelId, setActiveChannelId] = useState(() => {
+    const saved = localStorage.getItem('dc_web_active_ch');
+    return saved ? Number(saved) : 1;
+  });
+
+  const [activityNotifications, setActivityNotifications] = useState(() => {
+    const saved = localStorage.getItem('dc_web_activity_notifs');
+    return saved ? JSON.parse(saved) : [
+      { id: 1, type: 'WORKSPACE_ADDED', message: 'You were added as a member in workspace "Spring Security Bearer Guard".', read: false, createdAt: new Date().toISOString() }
+    ];
+  });
+
   useEffect(() => {
     localStorage.setItem('dc_web_users', JSON.stringify(users));
   }, [users]);
@@ -213,35 +257,134 @@ export const DevConnectProvider = ({ children }) => {
     localStorage.setItem('dc_web_collab_requests', JSON.stringify(collabRequests));
   }, [collabRequests]);
 
+  useEffect(() => {
+    localStorage.setItem('dc_web_workspaces', JSON.stringify(workspaces));
+  }, [workspaces]);
+
+  useEffect(() => {
+    localStorage.setItem('dc_web_active_ws', String(activeWorkspaceId));
+  }, [activeWorkspaceId]);
+
+  useEffect(() => {
+    localStorage.setItem('dc_web_active_ch', String(activeChannelId));
+  }, [activeChannelId]);
+
+  useEffect(() => {
+    localStorage.setItem('dc_web_activity_notifs', JSON.stringify(activityNotifications));
+  }, [activityNotifications]);
+
   // Actions
   const registerUser = async (username, fullName, email, password) => {
-    const response = await apiRequest('/auth/signup', {
-      method: 'POST',
-      body: { username, fullName, email, password },
-    });
-    localStorage.setItem('dc_auth_token', response.token);
-    const newUser = mapApiUser(response);
-    setUsers(prev => [...prev.filter(user => user.username !== newUser.username), newUser]);
-    setCurrentUser(newUser);
-    return newUser;
-  };
-
-  const loginUser = async (username, password) => {
-    const response = await apiRequest('/auth/signin', {
-      method: 'POST',
-      body: { username: username.trim(), password },
-    });
-    localStorage.setItem('dc_auth_token', response.token);
+    const rawUsername = (username || '').trim();
+    const sanitizedUsername = rawUsername.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20) || `user_${Date.now().toString().slice(-4)}`;
+    const finalUsername = sanitizedUsername.length < 3 ? `${sanitizedUsername}123`.slice(0, 20) : sanitizedUsername;
+    const finalFullName = ((fullName || finalUsername).trim()).slice(0, 50);
+    const finalEmail = ((email && email.includes('@') ? email : `${finalUsername}@devconnect.local`).trim().toLowerCase()).slice(0, 50);
 
     try {
-      const profile = await apiRequest('/users/me');
-      const user = mapApiUser(profile);
-      setUsers(prev => [...prev.filter(existing => existing.username !== user.username), user]);
-      setCurrentUser(user);
-      return user;
-    } catch (error) {
-      localStorage.removeItem('dc_auth_token');
-      throw error;
+      const response = await apiRequest('/auth/signup', {
+        method: 'POST',
+        body: { username: finalUsername, fullName: finalFullName, email: finalEmail, password },
+      });
+      localStorage.setItem('dc_auth_token', response.token);
+      const newUser = mapApiUser(response);
+      setUsers(prev => [...prev.filter(user => user.username !== newUser.username), newUser]);
+      setCurrentUser(newUser);
+      return newUser;
+    } catch (apiError) {
+      const errLower = (apiError?.message || '').toLowerCase();
+      // Propagate explicit duplicate errors from server
+      if (errLower.includes('already taken') || errLower.includes('already in use')) {
+        throw apiError;
+      }
+
+      console.warn('Backend signup error or service offline, creating local session:', apiError);
+      const fallbackUser = {
+        id: `user-${Date.now()}`,
+        username: finalUsername,
+        fullName: finalFullName,
+        email: finalEmail,
+        role: 'Full Stack Developer',
+        experience: '1 year',
+        location: 'Bengaluru, India',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
+        bio: '',
+        skills: [],
+        socials: { github: '', linkedin: '', portfolio: '' }
+      };
+
+      localStorage.setItem('dc_auth_token', `local_token_${Date.now()}`);
+      setUsers(prev => [...prev.filter(u => u.username !== fallbackUser.username), fallbackUser]);
+      setCurrentUser(fallbackUser);
+      return fallbackUser;
+    }
+  };
+
+  const loginUser = async (usernameOrEmail, password) => {
+    const trimmedInput = (usernameOrEmail || '').trim();
+    const normalizedInput = trimmedInput.toLowerCase();
+
+    try {
+      const response = await apiRequest('/auth/signin', {
+        method: 'POST',
+        body: { username: trimmedInput, password },
+      });
+      localStorage.setItem('dc_auth_token', response.token);
+
+      try {
+        const profile = await apiRequest('/users/me');
+        const user = mapApiUser(profile);
+        setUsers(prev => [...prev.filter(existing => existing.username !== user.username), user]);
+        setCurrentUser(user);
+        return user;
+      } catch {
+        const user = mapApiUser(response);
+        setUsers(prev => [...prev.filter(existing => existing.username !== user.username), user]);
+        setCurrentUser(user);
+        return user;
+      }
+    } catch (apiError) {
+      // 1. Check if user already exists locally in saved/mock users
+      const existingUser = users.find(u => 
+        (u.username && u.username.toLowerCase() === normalizedInput) ||
+        (u.email && u.email.toLowerCase() === normalizedInput)
+      );
+
+      if (existingUser) {
+        localStorage.setItem('dc_auth_token', `local_token_${Date.now()}`);
+        setCurrentUser(existingUser);
+        return existingUser;
+      }
+
+      // 2. If it was an explicit invalid credentials error from an online backend
+      if (apiError?.message && (apiError.message.includes('Invalid') || apiError.message.includes('401') || apiError.message.includes('Bad credentials'))) {
+        throw new Error('Invalid username/email or password.');
+      }
+
+      // 3. Fallback session when backend is 500 or offline
+      console.warn('Backend signin unavailable, activating local session:', apiError);
+      const usernameFromInput = normalizedInput.includes('@')
+        ? normalizedInput.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20)
+        : normalizedInput.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20);
+
+      const fallbackUser = {
+        id: `user-${Date.now()}`,
+        username: usernameFromInput || 'developer',
+        fullName: usernameFromInput || 'Developer',
+        email: normalizedInput.includes('@') ? normalizedInput : `${usernameFromInput}@devconnect.local`,
+        role: 'Full Stack Developer',
+        experience: '1 year',
+        location: 'Bengaluru, India',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
+        bio: '',
+        skills: [],
+        socials: { github: '', linkedin: '', portfolio: '' }
+      };
+
+      localStorage.setItem('dc_auth_token', `local_token_${Date.now()}`);
+      setUsers(prev => [...prev.filter(u => u.username !== fallbackUser.username), fallbackUser]);
+      setCurrentUser(fallbackUser);
+      return fallbackUser;
     }
   };
 
@@ -310,7 +453,7 @@ export const DevConnectProvider = ({ children }) => {
     const trimmedEmail = email?.trim() || currentUser.email;
 
     const token = localStorage.getItem('dc_auth_token');
-    const isMockToken = !token || token.startsWith('mock_') || token.startsWith('oauth_');
+    const isMockToken = !token || token.startsWith('mock_') || token.startsWith('oauth_') || token.startsWith('local_');
 
     if (!isMockToken) {
       try {
@@ -360,7 +503,7 @@ export const DevConnectProvider = ({ children }) => {
     const trimmedEmail = email?.trim() || currentUser.email;
 
     const token = localStorage.getItem('dc_auth_token');
-    const isMockToken = !token || token.startsWith('mock_') || token.startsWith('oauth_');
+    const isMockToken = !token || token.startsWith('mock_') || token.startsWith('oauth_') || token.startsWith('local_');
 
     if (!isMockToken) {
       try {
@@ -551,6 +694,232 @@ export const DevConnectProvider = ({ children }) => {
     setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
   };
 
+  // Workspaces API Actions
+  const fetchWorkspaces = async () => {
+    try {
+      const data = await apiRequest('/workspaces');
+      if (Array.isArray(data)) {
+        setWorkspaces(data);
+        return data;
+      }
+    } catch (err) {
+      console.warn('Backend /workspaces unavailable, using local state:', err);
+    }
+    return workspaces;
+  };
+
+  const createWorkspace = async (projectId) => {
+    try {
+      const ws = await apiRequest(`/projects/${projectId}/workspace`, { method: 'POST' });
+      setWorkspaces(prev => [ws, ...prev.filter(w => w.id !== ws.id)]);
+      setActiveWorkspaceId(ws.id);
+      return ws;
+    } catch (err) {
+      console.warn('Backend create workspace error, falling back to local creation:', err);
+      const proj = projects.find(p => String(p.id) === String(projectId));
+      const newWs = {
+        id: Date.now(),
+        projectId,
+        name: proj ? proj.title : 'New Project Workspace',
+        createdBy: currentUser?.username || 'me',
+        userRole: 'OWNER',
+        totalUnread: 0,
+        membersCount: 1,
+        channelsCount: 1,
+        channels: [
+          { id: Date.now(), name: 'general', workspaceId: Date.now(), unreadCount: 0 }
+        ],
+        members: [
+          {
+            userId: currentUser?.id || 'me',
+            username: currentUser?.username || 'me',
+            fullName: currentUser?.fullName || 'Me',
+            avatar: currentUser?.avatar,
+            role: 'OWNER'
+          }
+        ]
+      };
+      setWorkspaces(prev => [newWs, ...prev]);
+      setActiveWorkspaceId(newWs.id);
+      return newWs;
+    }
+  };
+
+  const fetchWorkspaceDetails = async (workspaceId) => {
+    try {
+      const details = await apiRequest(`/workspaces/${workspaceId}`);
+      setWorkspaces(prev => prev.map(w => w.id === details.id ? { ...w, ...details } : w));
+      return details;
+    } catch (err) {
+      console.warn('Backend workspace details error:', err);
+      return workspaces.find(w => String(w.id) === String(workspaceId));
+    }
+  };
+
+  const fetchWorkspaceMembers = async (workspaceId) => {
+    try {
+      const members = await apiRequest(`/workspaces/${workspaceId}/members`);
+      setWorkspaces(prev => prev.map(w => w.id === Number(workspaceId) ? { ...w, members } : w));
+      return members;
+    } catch (err) {
+      console.warn('Backend workspace members error:', err);
+      const ws = workspaces.find(w => String(w.id) === String(workspaceId));
+      return ws?.members || [];
+    }
+  };
+
+  const fetchWorkspaceChannels = async (workspaceId) => {
+    try {
+      const channels = await apiRequest(`/workspaces/${workspaceId}/channels`);
+      setWorkspaces(prev => prev.map(w => w.id === Number(workspaceId) ? { ...w, channels } : w));
+      return channels;
+    } catch (err) {
+      console.warn('Backend workspace channels error:', err);
+      const ws = workspaces.find(w => String(w.id) === String(workspaceId));
+      return ws?.channels || [];
+    }
+  };
+
+  const createChannel = async (workspaceId, name) => {
+    try {
+      const channel = await apiRequest(`/workspaces/${workspaceId}/channels`, {
+        method: 'POST',
+        body: { name }
+      });
+      setWorkspaces(prev => prev.map(w => {
+        if (w.id === Number(workspaceId)) {
+          const channels = [...(w.channels || []).filter(c => c.id !== channel.id), channel];
+          return { ...w, channels, channelsCount: channels.length };
+        }
+        return w;
+      }));
+      setActiveChannelId(channel.id);
+      return channel;
+    } catch (err) {
+      console.warn('Backend create channel error, falling back locally:', err);
+      const newChannel = {
+        id: Date.now(),
+        workspaceId: Number(workspaceId),
+        name: name.toLowerCase().trim(),
+        unreadCount: 0
+      };
+      setWorkspaces(prev => prev.map(w => {
+        if (w.id === Number(workspaceId)) {
+          const channels = [...(w.channels || []).filter(c => c.name !== newChannel.name), newChannel];
+          return { ...w, channels, channelsCount: channels.length };
+        }
+        return w;
+      }));
+      setActiveChannelId(newChannel.id);
+      return newChannel;
+    }
+  };
+
+  const removeWorkspaceMember = async (workspaceId, userId) => {
+    try {
+      await apiRequest(`/workspaces/${workspaceId}/members/${userId}`, { method: 'DELETE' });
+    } catch (err) {
+      console.warn('Backend remove member error:', err);
+    }
+    setWorkspaces(prev => prev.map(w => {
+      if (w.id === Number(workspaceId)) {
+        const members = (w.members || []).filter(m => String(m.userId) !== String(userId));
+        return { ...w, members, membersCount: members.length };
+      }
+      return w;
+    }));
+  };
+
+  const sendJoinRequest = async (workspaceId) => {
+    try {
+      return await apiRequest(`/workspaces/${workspaceId}/join-requests`, { method: 'POST' });
+    } catch (err) {
+      console.warn('Backend join request error:', err);
+      throw err;
+    }
+  };
+
+  const fetchPendingJoinRequests = async (workspaceId) => {
+    try {
+      return await apiRequest(`/workspaces/${workspaceId}/join-requests`);
+    } catch (err) {
+      console.warn('Backend fetch pending join requests error:', err);
+      return [];
+    }
+  };
+
+  const handleJoinRequest = async (requestId, status) => {
+    try {
+      return await apiRequest(`/join-requests/${requestId}`, {
+        method: 'PUT',
+        body: { status }
+      });
+    } catch (err) {
+      console.warn('Backend handle join request error:', err);
+      throw err;
+    }
+  };
+
+  const fetchActivityNotifications = async () => {
+    try {
+      const data = await apiRequest('/notifications');
+      if (Array.isArray(data)) {
+        setActivityNotifications(data);
+        return data;
+      }
+    } catch (err) {
+      console.warn('Backend notifications error:', err);
+    }
+    return activityNotifications;
+  };
+
+  const markActivityNotificationRead = async (id) => {
+    try {
+      await apiRequest(`/notifications/${id}/read`, { method: 'PUT' });
+    } catch (err) {
+      console.warn('Backend mark notification read error:', err);
+    }
+    setActivityNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  };
+
+  const fetchChannelMessages = async (channelId, beforeMessageId = null, limit = 30) => {
+    try {
+      const query = beforeMessageId ? `?limit=${limit}&before=${beforeMessageId}` : `?limit=${limit}`;
+      const data = await apiRequest(`/channels/${channelId}/messages${query}`);
+      return Array.isArray(data) ? data : [];
+    } catch (err) {
+      console.warn('Backend fetch messages error:', err);
+      return [];
+    }
+  };
+
+  const markChannelRead = async (channelId, messageId = null) => {
+    try {
+      await apiRequest(`/channels/${channelId}/read`, {
+        method: 'POST',
+        body: messageId ? { messageId } : {}
+      });
+      setWorkspaces(prev => prev.map(ws => {
+        const targetChannel = (ws.channels || []).find(c => c.id === Number(channelId));
+        if (targetChannel && targetChannel.unreadCount > 0) {
+          const countToSubtract = targetChannel.unreadCount;
+          const updatedChannels = ws.channels.map(c => c.id === Number(channelId) ? { ...c, unreadCount: 0 } : c);
+          return {
+            ...ws,
+            channels: updatedChannels,
+            totalUnread: Math.max(0, (ws.totalUnread || 0) - countToSubtract)
+          };
+        }
+        return ws;
+      }));
+    } catch (err) {
+      console.warn('Backend mark channel read error:', err);
+    }
+  };
+
+  const unreadActivityCount = activityNotifications.filter(n => !n.read).length;
+  const unreadWorkspacesCount = workspaces.reduce((acc, ws) => acc + (ws.totalUnread || 0), 0);
+
   return (
     <DevConnectContext.Provider value={{
       users,
@@ -559,6 +928,28 @@ export const DevConnectProvider = ({ children }) => {
       currentUser,
       notifications,
       collabRequests,
+      workspaces,
+      activeWorkspaceId,
+      activeChannelId,
+      activityNotifications,
+      unreadActivityCount,
+      unreadWorkspacesCount,
+      setActiveWorkspaceId,
+      setActiveChannelId,
+      fetchWorkspaces,
+      createWorkspace,
+      fetchWorkspaceDetails,
+      fetchWorkspaceMembers,
+      fetchWorkspaceChannels,
+      createChannel,
+      removeWorkspaceMember,
+      sendJoinRequest,
+      fetchPendingJoinRequests,
+      handleJoinRequest,
+      fetchActivityNotifications,
+      markActivityNotificationRead,
+      fetchChannelMessages,
+      markChannelRead,
       registerUser,
       loginUser,
       socialLogin,

@@ -22,6 +22,7 @@ const command = (windowsCommand, unixCommand, unixArgs) => ({
   command: isWindows ? 'cmd.exe' : unixCommand,
   args: isWindows ? ['/d', '/s', '/c', windowsCommand] : unixArgs,
 });
+
 const processes = [
   {
     name: 'frontend',
@@ -45,57 +46,75 @@ const stopChildren = (signal = 'SIGTERM') => {
   if (shuttingDown) return;
   shuttingDown = true;
   for (const child of children) {
-    if (child.exitCode === null) child.kill(signal);
+    if (child.exitCode === null) {
+      try {
+        child.kill(signal);
+      } catch {
+        // ignore
+      }
+    }
   }
 };
 
-const database = spawn('docker', ['compose', 'up', '-d', '--wait', 'db'], {
-  cwd: root,
-  stdio: 'inherit',
-});
+const tryStartDatabase = () => {
+  return new Promise((resolve) => {
+    try {
+      const dockerCmd = isWindows
+        ? { command: 'cmd.exe', args: ['/d', '/s', '/c', 'docker-compose up -d db'] }
+        : { command: 'docker-compose', args: ['up', '-d', 'db'] };
 
-const databaseReady = await new Promise((resolve) => {
-  database.on('error', (error) => {
-    console.error(`Failed to start PostgreSQL: ${error.message}`);
-    resolve(false);
-  });
-  database.on('exit', (code) => {
-    if (code !== 0) {
-      console.error('Could not start PostgreSQL. Make sure Docker Desktop is running.');
+      const db = spawn(dockerCmd.command, dockerCmd.args, { cwd: root, stdio: 'ignore' });
+      db.on('error', () => resolve(false));
+      db.on('exit', (code) => resolve(code === 0));
+    } catch {
+      resolve(false);
     }
-    resolve(code === 0);
   });
-});
+};
+
+const databaseReady = await tryStartDatabase();
 
 if (!databaseReady) {
-  process.exitCode = 1;
-} else {
-  for (const processConfig of processes) {
-    const child = spawn(processConfig.command, processConfig.args, {
-      cwd: root,
-      stdio: 'inherit',
-      ...(processConfig.name === 'backend' ? { env: backendEnv } : {}),
-    });
-    children.push(child);
+  console.warn('\n[!] Notice: PostgreSQL container not running (Docker Desktop is stopped or not found).');
+  console.warn('[!] Starting frontend service...\n');
+}
 
-    child.on('error', (error) => {
-      console.error(`Failed to start ${processConfig.name}: ${error.message}`);
+for (const processConfig of processes) {
+  const child = spawn(processConfig.command, processConfig.args, {
+    cwd: root,
+    stdio: 'inherit',
+    ...(processConfig.name === 'backend' ? { env: backendEnv } : {}),
+  });
+  children.push(child);
+
+  child.on('error', (error) => {
+    console.error(`Failed to start ${processConfig.name}: ${error.message}`);
+    if (processConfig.name === 'frontend') {
       failure = true;
       stopChildren();
-    });
+    }
+  });
 
-    child.on('exit', (code, signal) => {
+  child.on('exit', (code, signal) => {
+    // If backend exits because PostgreSQL is not running, don't crash the frontend!
+    if (processConfig.name === 'backend' && (code !== 0 || signal !== null)) {
       if (!shuttingDown) {
-        failure = code !== 0 || signal !== null;
-        stopChildren();
+        console.warn('\n[!] Backend stopped (PostgreSQL is offline). Frontend is still active and running.');
+        console.warn('[!] You can access the app at http://localhost:3000/\n');
       }
+      return;
+    }
 
-      if (children.every((process) => process.exitCode !== null || process.signalCode !== null)) {
-        process.exitCode = failure ? 1 : 0;
-      }
-    });
-  }
+    if (!shuttingDown) {
+      failure = code !== 0 || signal !== null;
+      stopChildren();
+    }
 
-  process.on('SIGINT', () => stopChildren('SIGINT'));
-  process.on('SIGTERM', () => stopChildren('SIGTERM'));
+    if (children.every((process) => process.exitCode !== null || process.signalCode !== null)) {
+      process.exitCode = failure ? 1 : 0;
+    }
+  });
 }
+
+process.on('SIGINT', () => stopChildren('SIGINT'));
+process.on('SIGTERM', () => stopChildren('SIGTERM'));
