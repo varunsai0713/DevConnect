@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="dc-grad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6366F1" />
+      <stop offset="50%" stop-color="#4F46E5" />
+      <stop offset="100%" stop-color="#3730A3" />
+    </linearGradient>
+    <linearGradient id="dc-border" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#A5B4FC" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#818CF8" stop-opacity="0.3" />
+    </linearGradient>
+    <filter id="dc-shadow" x="0" y="0" width="64" height="64" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#4F46E5" flood-opacity="0.45" />
+    </filter>
+  </defs>
+
+  <g transform="translate(32 32)">
+    <!-- Rotated Diamond matching DevConnect brand -->
+    <rect x="-21" y="-21" width="42" height="42" rx="9" transform="rotate(45)" fill="url(#dc-grad)" stroke="url(#dc-border)" stroke-width="2" filter="url(#dc-shadow)" />
+    
+    <!-- Shield Emblem & Tech Connection Core -->
+    <path d="M0 -13 L11 -6 C11 4 6 12 0 15 C-6 12 -11 4 -11 -6 Z" fill="#0F172A" fill-opacity="0.35" />
+    <path d="M0 -11 L9 -5 C9 3.5 5 10.5 0 13 C-5 10.5 -9 3.5 -9 -5 Z" fill="none" stroke="#E0E7FF" stroke-width="2.2" stroke-linejoin="round" />
+    <path d="M0 -5 L0 7" stroke="#38BDF8" stroke-width="2" stroke-linecap="round" />
+    <circle cx="0" cy="-5" r="2.2" fill="#38BDF8" />
+    <circle cx="0" cy="7" r="2.2" fill="#38BDF8" />
+  </g>
+</svg>
+

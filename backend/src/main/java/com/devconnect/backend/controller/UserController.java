@@ -47,7 +47,9 @@ public class UserController {
                     if (profile.getRole() != null) user.setRole(profile.getRole());
                     user.setExperience(profile.getExperience());
                     user.setLocation(profile.getLocation());
-                    user.setAvatar(profile.getAvatar());
+                    if (profile.getAvatar() != null && !profile.getAvatar().isBlank()) {
+                        user.setAvatar(profile.getAvatar());
+                    }
                     user.setBio(profile.getBio());
                     user.setSkills(profile.getSkills() == null ? List.of() : profile.getSkills());
                     user.setGithubUrl(profile.getGithubUrl());
@@ -82,7 +84,9 @@ public class UserController {
                     if (profile.getRole() != null) user.setRole(profile.getRole());
                     user.setExperience(profile.getExperience());
                     user.setLocation(profile.getLocation());
-                    user.setAvatar(profile.getAvatar());
+                    if (profile.getAvatar() != null && !profile.getAvatar().isBlank()) {
+                        user.setAvatar(profile.getAvatar());
+                    }
                     user.setBio(profile.getBio());
                     user.setSkills(profile.getSkills() == null ? List.of() : profile.getSkills());
                     user.setGithubUrl(profile.getGithubUrl());

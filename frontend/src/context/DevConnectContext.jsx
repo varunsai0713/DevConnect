@@ -273,6 +273,23 @@ export const DevConnectProvider = ({ children }) => {
     localStorage.setItem('dc_web_activity_notifs', JSON.stringify(activityNotifications));
   }, [activityNotifications]);
 
+  // Auto-sync user avatar to backend database so other members and messages get the real photo
+  useEffect(() => {
+    if (currentUser?.avatar && !currentUser.avatar.includes('photo-1534528741775-53994a69daeb')) {
+      const token = localStorage.getItem('dc_auth_token');
+      if (token && !token.startsWith('local_') && !token.startsWith('oauth_') && !token.startsWith('mock_')) {
+        apiRequest('/users/me', {
+          method: 'PUT',
+          body: {
+            avatar: currentUser.avatar,
+            fullName: currentUser.fullName,
+            email: currentUser.email
+          }
+        }).catch(() => {});
+      }
+    }
+  }, [currentUser?.avatar]);
+
   // Auto-heal / auto-exchange dummy local/oauth tokens to a genuine server JWT
   useEffect(() => {
     const upgradeDummyToken = async () => {

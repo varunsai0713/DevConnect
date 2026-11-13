@@ -970,6 +970,9 @@ export default function WorkspacesPage() {
             const isMe = String(msg.senderId) === String(currentUser?.id) || msg.senderUsername === currentUser?.username;
             const isFailed = msg.status === 'failed';
             const isSending = msg.status === 'sending';
+            const senderPhoto = (isMe && currentUser?.avatar)
+              ? currentUser.avatar
+              : (msg.senderAvatar || (isMe ? currentUser?.avatar : null) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150');
 
             return (
               <div 
@@ -977,7 +980,7 @@ export default function WorkspacesPage() {
                 className={`flex gap-3 text-left group ${isFailed ? 'opacity-90' : ''}`}
               >
                 <img 
-                  src={msg.senderAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150'} 
+                  src={senderPhoto} 
                   alt={msg.senderFullName || msg.senderUsername || 'Member'}
                   className="w-8 h-8 rounded-full object-cover shrink-0 border border-slate-800 mt-0.5" 
                 />
@@ -1090,6 +1093,9 @@ export default function WorkspacesPage() {
             const isMe = String(m.userId) === String(currentUser?.id) || m.username === currentUser?.username;
             const isMemberOwner = m.role === 'OWNER';
             const isOnline = isMe ? stompConnected : !!onlineUsers[m.userId];
+            const memberPhoto = (isMe && currentUser?.avatar)
+              ? currentUser.avatar
+              : (m.avatar || (isMe ? currentUser?.avatar : null) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150');
 
             return (
               <div 
@@ -1099,7 +1105,7 @@ export default function WorkspacesPage() {
                 <div className="flex items-center gap-2.5 truncate">
                   <div className="relative shrink-0">
                     <img 
-                      src={m.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150'} 
+                      src={memberPhoto} 
                       alt={m.fullName}
                       className="w-7 h-7 rounded-full object-cover border border-slate-700" 
                     />
@@ -1247,7 +1253,7 @@ export default function WorkspacesPage() {
                   >
                     <div className="flex items-center gap-2.5 truncate">
                       <img 
-                        src={req.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150'} 
+                        src={(String(req.userId) === String(currentUser?.id) && currentUser?.avatar) ? currentUser.avatar : (req.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150')} 
                         alt={req.fullName}
                         className="w-8 h-8 rounded-full object-cover border border-slate-700" 
                       />

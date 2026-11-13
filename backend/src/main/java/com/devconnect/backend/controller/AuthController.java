@@ -57,7 +57,8 @@ public class AuthController {
                                                  user.getUsername(), 
                                                  user.getEmail(), 
                                                  user.getFullName(),
-                                                 user.getRole()));
+                                                 user.getRole(),
+                                                 user.getAvatar()));
     }
 
     @PostMapping("/signup")
@@ -96,6 +97,7 @@ public class AuthController {
                 savedUser.getUsername(),
                 savedUser.getEmail(),
                 savedUser.getFullName(),
-                savedUser.getRole()));
+                savedUser.getRole(),
+                savedUser.getAvatar()));
     }
 }

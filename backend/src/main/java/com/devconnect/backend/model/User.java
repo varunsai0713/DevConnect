@@ -37,6 +37,7 @@ public class User {
     
     private String location;
     
+    @Column(columnDefinition = "TEXT")
     private String avatar;
     
     @Column(length = 1000)

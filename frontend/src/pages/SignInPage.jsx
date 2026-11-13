@@ -48,7 +48,7 @@ export default function SignInPage() {
       const user = await loginUser(email, password);
       setSuccess('Signed in successfully.');
       setIsSubmitting(false);
-      navigate(user.skills && user.skills.length === 0 ? '/profile-setup' : '/dashboard');
+      navigate('/dashboard');
     } catch (requestError) {
       setError(requestError.message || 'Invalid username/email or password.');
       setIsSubmitting(false);
@@ -71,7 +71,7 @@ export default function SignInPage() {
       setIsOAuthSubmitting(false);
       setActiveOAuthProvider(null);
       setSuccess(`Signed in with ${activeOAuthProvider} as ${accountData.email}`);
-      navigate(user.skills && user.skills.length === 0 ? '/profile-setup' : '/dashboard');
+      navigate('/dashboard');
     } catch (err) {
       setIsOAuthSubmitting(false);
       setError(err.message || `Failed to sign in with ${activeOAuthProvider}.`);
